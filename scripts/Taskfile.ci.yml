@@ -1,0 +1,78 @@
+version: "3"
+
+tasks:
+  isolate:
+    desc: Create an isolated CI environment
+    cmds:
+      - ./scripts/isolate.sh
+
+  isolate:nix-shell:
+    desc: Create an isolated CI environment and enter CI nix-shell
+    cmds:
+      - ./scripts/isolate.sh ":nix-shell:"
+
+  pre-commit:
+    desc: Execute pre-commit for CI
+    cmds:
+      - nix-shell nix/shells.nix --pure -A ci --run scripts/ci/pre-commit.sh
+
+  pre-commit:emulate:
+    desc: Execute pre-commit for CI with full emulation
+    cmds:
+      - ./scripts/isolate.sh pre-commit
+
+  pre-commit:debug:
+    desc: Execute pre-commit for CI with full emulation and enter shell afterwards
+    env:
+      CI_EMULATE_AFTER: enter
+    cmds:
+      - ./scripts/isolate.sh pre-commit
+
+  unit-test:
+    desc: Execute unit tests for CI
+    cmds:
+      - nix-shell nix/shells.nix --pure -A ci --run scripts/ci/unit_test.sh
+
+  unit-test:emulate:
+    desc: Execute unit tests for CI with full emulation
+    cmds:
+      - ./scripts/isolate.sh unit_test
+
+  unit-test:debug:
+    desc: Execute unit tests for CI with full emulation and enter shell afterwards
+    env:
+      CI_EMULATE_AFTER: enter
+    cmds:
+      - ./scripts/isolate.sh unit_test
+  integration-test:
+    desc: Execute integration tests for CI
+    cmds:
+      - nix-shell nix/shells.nix --pure -A ci --run scripts/ci/integration_test.sh
+
+  integration-test:emulate:
+    desc: Execute integration tests for CI with full emulation
+    cmds:
+      - ./scripts/isolate.sh integration_test
+
+  integration-test:debug:
+    desc: Execute integration tests for CI with full emulation and enter shell afterwards
+    env:
+      CI_EMULATE_AFTER: enter
+    cmds:
+      - ./scripts/isolate.sh integration_test
+  build:
+    desc: Build for CI
+    cmds:
+      - nix-shell nix/shells.nix --pure -A ci --run scripts/ci/build.sh
+
+  build:emulate:
+    desc: Build for CI with full emulation
+    cmds:
+      - ./scripts/isolate.sh build
+
+  build:debug:
+    desc: Build for CI with full emulation and enter shell afterwards
+    env:
+      CI_EMULATE_AFTER: enter
+    cmds:
+      - ./scripts/isolate.sh build

@@ -1,0 +1,35 @@
+name: "Setup CloudFlare Pages"
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  UnSetupCloudFlare:
+    name: Delete CloudFlare Pages
+    runs-on:
+      - nix
+      - ARM64
+    steps:
+      - name: Gotrade CI Environment
+        uses: kirinnee/atomici-action@v2.3.1
+
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_TOKEN_SEMANTIC_RELEASE }}
+
+      - name: Create CloudFlare Pages
+        env:
+          DOMAIN: tr8.wiki
+          CF_SUB: action
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_ZONE: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          REPOSITORY: ${{ github.repository }}
+          NON_INTERACTIVE: "1"
+          NIXPKGS_ALLOW_UNFREE: "1"
+        run: nix-shell nix/shells.nix -A ci --run scripts/ci/unsetup-repository.sh

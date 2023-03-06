@@ -1,0 +1,9 @@
+{
+  "extends": "./config/tsconfig.cjs.json",
+  "compilerOptions": {
+    // compilation
+    "outDir": "./lib/commonjs",
+    "rootDir": "./src"
+  },
+  "exclude": ["../node_modules", "tests", "config"]
+}

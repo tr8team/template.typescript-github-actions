@@ -1,0 +1,31 @@
+version: "3"
+
+includes:
+  enforce: ./scripts/Taskfile.enforce.yml
+  ci: ./scripts/Taskfile.ci.yml
+  test: ./scripts/Taskfile.test.yml
+  fmt: ./scripts/Taskfile.fmt.yml
+  ide: ./scripts/Taskfile.ide.yml
+  lint: ./scripts/Taskfile.lint.yml
+  setup: ./scripts/Taskfile.setup.yml
+
+tasks:
+  build:
+    desc: Builds and packages the action
+    deps: [clean]
+    cmds:
+      - tsc
+      - ncc build -s --target es2021 --license licenses.txt
+  clean:
+    desc: Clean Artifacts
+    cmds:
+      - rm -rf ./dist
+      - rm -rf ./lib
+      - task: test:clean
+  # Quality Assurance
+  check:
+    desc: Run all Quality Checks
+    cmds:
+      - task: enforce
+      - task: lint
+      - task: fmt

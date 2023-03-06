@@ -1,0 +1,32 @@
+version: "3"
+
+includes:
+  util: ./Taskfile.util.yml
+
+tasks:
+  default:
+    desc: Run all enforcers
+    cmds:
+      - task: exec-script
+      - task: gitlint
+      - task: action-docs
+
+  action-docs:
+    desc: Ensure action's documentations are generated
+    cmds:
+      - task: util:pc
+        vars:
+          PC_ID: action-docs-enforce
+
+  exec-script:
+    desc: Ensure all scripts are executable
+    cmds:
+      - task: util:pc
+        vars:
+          PC_ID: exec-enforce
+  gitlint:
+    desc: Enforces that gitlint to conforms to atomi_release.yaml
+    cmds:
+      - task: util:pc
+        vars:
+          PC_ID: releaser-enforce

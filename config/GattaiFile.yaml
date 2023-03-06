@@ -1,0 +1,42 @@
+version: v1
+
+repos:
+  git_src:
+    src: git
+    config:
+      url: https://github.com/tr8team/gattai.git
+      branch: main
+      dir: gattai_actions
+
+enforce_targets:
+  staging:
+    - value_file
+
+targets:
+  # retrievals
+  aws_local:
+    GIST_ID:
+      action: git_src/aws/get_secret_value
+      vars:
+        region: ap-southeast-1
+        identifier: github_action/test/gist_access
+        property: gist_id
+        profile: "dev"
+  aws_ci:
+    GIST_ID:
+      action: git_src/aws/get_secret_value
+      vars:
+        region: ap-southeast-1
+        identifier: github_action/test/gist_access
+        property: gist_id
+  out:
+    secrets_local:
+      action: git_src/write_file
+      vars:
+        content: '{"gistKeyValue": {"gistId": {{ fetch .Targets.aws_local.GIST_ID }} } }'
+        filename: "tests/integration/secrets.json"
+    secrets_ci:
+      action: git_src/write_file
+      vars:
+        content: '{"gistKeyValue": {"gistId": {{ fetch .Targets.aws_ci.GIST_ID }} } }'
+        filename: "tests/integration/secrets.json"

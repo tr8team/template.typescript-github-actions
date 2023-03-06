@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    // rules
+    "strictPropertyInitialization": true,
+
+    "useDefineForClassFields": true,
+    "strict": true,
+    "useUnknownInCatchVariables": true,
+    "noUnusedLocals": true,
+    "noImplicitThis": true,
+    "noImplicitAny": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "strictFunctionTypes": true,
+    "strictNullChecks": true,
+    "inlineSourceMap": true,
+    "inlineSources": true
+  }
+}

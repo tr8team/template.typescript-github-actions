@@ -1,0 +1,274 @@
+name: "CI/CD"
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+env:
+  ENABLE_PNPM_CACHE: "false"
+jobs:
+  UnitTest:
+    runs-on:
+      - nix
+      - ARM64
+    steps:
+      - name: Gotrade CI Environment
+        uses: kirinnee/atomici-action@v2.3.1
+
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Cache node_modules directory
+        uses: actions/cache@v3
+        if: env.ENABLE_PNPM_CACHE == 'true'
+        with:
+          path: |
+            **/node_modules
+          key: test-${{ runner.os }}-${{ runner.arch }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            test-${{ runner.os }}-${{ runner.arch }}-pnpm
+
+      - name: Emulate Nix Shell
+        env:
+          NIXPKGS_ALLOW_UNFREE: "1"
+        run: nix-shell nix/shells.nix -A ci --run scripts/ci/export_path.sh
+
+      - name: Unit Tests
+        run: scripts/ci/unit_test.sh
+
+      - name: Publish Test Result
+        id: unit-test-report
+        run: scripts/ci/publish_cloudflare.sh
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PROJECT_NAME: '{{{ (datasource "config").unit_test_report }}}'
+          DIRECTORY: test-results/unit/html
+
+      - name: Publish Coverage Result
+        id: unit-coverage-report
+        run: scripts/ci/publish_cloudflare.sh
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PROJECT_NAME: '{{{ (datasource "config").unit_test_coverage }}}'
+          DIRECTORY: test-results/unit/coverage
+
+      - name: Unit Test Extractor
+        id: unit-test-report-extractor
+        uses: tr8team/actions.test-sources@v1.1.0
+        with:
+          name: Unit Test Results
+          url: "${{ steps.unit-test-report.outputs.url }}"
+          type: "vitest-result"
+          path: "./test-results/unit/result.json"
+
+      - name: Unit Test coverage Extractor
+        id: unit-coverage-report-extractor
+        uses: tr8team/actions.test-sources@v1.1.0
+        with:
+          name: Unit Test Coverage
+          url: "${{ steps.unit-coverage-report.outputs.url }}"
+          type: "vitest-istanbul-coverage"
+          path: "./test-results/unit/coverage/coverage-summary.json"
+
+    outputs:
+      testResult: ${{ steps.unit-test-report-extractor.outputs.data }}
+      testCoverage: ${{ steps.unit-coverage-report-extractor.outputs.data }}
+  IntegrationTest:
+    runs-on:
+      - nix
+      - ARM64
+    steps:
+      - name: Gotrade CI Environment
+        uses: kirinnee/atomici-action@v2.3.1
+
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS Credentials for Gattai
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.DEV_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.DEV_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-southeast-1
+
+      - name: Cache node_modules directory
+        uses: actions/cache@v3
+        if: env.ENABLE_PNPM_CACHE == 'true'
+        with:
+          path: |
+            **/node_modules
+          key: test-${{ runner.os }}-${{ runner.arch }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            test-${{ runner.os }}-${{ runner.arch }}-pnpm
+      - name: Inject PATH variable for Publish to CloudFlare Pages
+        env:
+          NIXPKGS_ALLOW_UNFREE: "1"
+        run: nix-shell nix/shells.nix -A ci --run scripts/ci/export_path.sh
+
+      - name: Integration Tests
+        run: scripts/ci/integration_test.sh
+
+      - name: Publish Test Result
+        id: integration-test-report
+        run: scripts/ci/publish_cloudflare.sh
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PROJECT_NAME: '{{{ (datasource "config").int_test_report }}}'
+          DIRECTORY: test-results/int/html
+
+      - name: Publish Coverage Result
+        id: integration-coverage-report
+        run: scripts/ci/publish_cloudflare.sh
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PROJECT_NAME: '{{{ (datasource "config").int_test_coverage }}}'
+          DIRECTORY: test-results/int/coverage
+
+      - name: Integration Test Extractor
+        id: integration-test-report-extractor
+        uses: tr8team/actions.test-sources@v1.1.0
+        with:
+          name: Integration Test Results
+          url: "${{ steps.integration-test-report.outputs.url }}"
+          type: "vitest-result"
+          path: "./test-results/int/result.json"
+
+      - name: Integration Test coverage Extractor
+        id: integration-coverage-report-extractor
+        uses: tr8team/actions.test-sources@v1.1.0
+        with:
+          name: Integration Test Coverage
+          url: "${{ steps.integration-coverage-report.outputs.url }}"
+          type: "vitest-istanbul-coverage"
+          path: "./test-results/int/coverage/coverage-summary.json"
+    outputs:
+      testResult: ${{ steps.integration-test-report-extractor.outputs.data }}
+      testCoverage: ${{ steps.integration-coverage-report-extractor.outputs.data }}
+
+  MetadataProcessing:
+    needs:
+      - UnitTest
+      - IntegrationTest
+    runs-on:
+      - nix
+      - ARM64
+    steps:
+      - name: Gotrade CI Environment
+        uses: kirinnee/atomici-action@v2.3.1
+
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Test Tracker
+        id: test-tracker
+        uses: tr8team/actions.test-tracker@v1.3.0
+        with:
+          data: |
+            [
+              ${{needs.UnitTest.outputs.testResult}},
+              ${{needs.UnitTest.outputs.testCoverage}},
+              ${{needs.IntegrationTest.outputs.testResult}},
+              ${{needs.IntegrationTest.outputs.testCoverage}}
+            ]
+          gist_id: '{{{ (datasource "config").gist_id }}}'
+          github_token: ${{ secrets.GIST_TOKEN }}
+          prefix: '{{{ (datasource "config").prefix }}}'
+  Build:
+    runs-on:
+      - nix
+      - ARM64
+    steps:
+      - name: Gotrade CI Environment
+        uses: kirinnee/atomici-action@v2.3.1
+
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Cache node_modules directory
+        uses: actions/cache@v3
+        if: env.ENABLE_PNPM_CACHE == 'true'
+        with:
+          path: |
+            **/node_modules
+          key: test-${{ runner.os }}-${{ runner.arch }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            test-${{ runner.os }}-${{ runner.arch }}-pnpm
+
+      - name: Unit Tests
+        continue-on-error: true
+        env:
+          NIXPKGS_ALLOW_UNFREE: "1"
+        run: nix-shell nix/shells.nix -A ci --run scripts/ci/build.sh
+
+  Pre-commit:
+    runs-on:
+      - nix
+      - ARM64
+    steps:
+      - name: Gotrade CI Environment
+        uses: kirinnee/atomici-action@v2.3.1
+
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Cache node_modules directory
+        uses: actions/cache@v3
+        if: env.ENABLE_PNPM_CACHE == 'true'
+        with:
+          path: |
+            **/node_modules
+          key: test-${{ runner.os }}-${{ runner.arch }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            test-${{ runner.os }}-${{ runner.arch }}-pnpm
+
+      - name: Integrations Tests
+        continue-on-error: true
+        env:
+          NIXPKGS_ALLOW_UNFREE: "1"
+        run: nix-shell nix/shells.nix -A ci --run scripts/ci/pre-commit.sh
+
+  Release:
+    needs:
+      - UnitTest
+      - IntegrationTest
+      - Build
+      - Pre-commit
+    name: Release
+    if: github.ref == 'refs/heads/main'
+    runs-on:
+      - nix
+      - ARM64
+    steps:
+      - name: Gotrade CI Environment
+        uses: kirinnee/atomici-action@v2.3.1
+
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GH_TOKEN_SEMANTIC_RELEASE }}
+
+      - name: Remove GitHooks
+        run: rm ./.git/hooks/* || true
+
+      - name: Build Packages
+        env:
+          NIXPKGS_ALLOW_UNFREE: "1"
+        run: nix-shell nix/shells.nix -A ci --run scripts/ci/build.sh
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN_SEMANTIC_RELEASE }}
+        run: nix-shell nix/shells.nix -A cd --run scripts/ci/release.sh
