@@ -52,6 +52,32 @@ if [ "${noninteractive}" != "1" ]; then
 	fi
 fi
 
+echo "📥 Retrieving DNS records..."
+resp=$(curl "https://api.cloudflare.com/client/v4/zones/${zone}/dns_records" \
+	-H "Authorization: Bearer ${bearer}")
+
+if [ "${debug}" = "1" ]; then
+	echo "$resp"
+fi
+if [ "$(echo "$resp" | jq '.success')" = "true" ]; then
+  echo "✅ Retrieved DNS records"
+  record_id=$(echo "$resp" | jq -r --arg domain "$fqdn" '.result[] | select(.type | contains("CNAME") ) | select(.name | contains($domain)) | .id')
+
+  echo "🗑 Deleting CNAME record '$record_id'..."
+  resp=$(curl --request DELETE \
+      --url "https://api.cloudflare.com/client/v4/zones/${zone}/dns_records/${record_id}" \
+      -H "Authorization: Bearer ${bearer}")
+  if [ "$(echo "$resp" | jq '.success')" = "true" ]; then
+    echo "✅ Deleted DNS record '$record_id'"
+  else
+    echo "❌ Failed to delete DNS record '$record_id'"
+    echo "$resp"
+  fi
+else
+  echo "❌ Failed to retrieve DNS Records"
+  echo "$resp"
+fi
+
 echo "📥 Retrieving custom applications..."
 resp=$(curl "https://api.cloudflare.com/client/v4/accounts/${account}/access/apps" \
 	-H "Authorization: Bearer ${bearer}")
