@@ -229,7 +229,7 @@ class KOption<T> implements Option<T> {
           const mapped = await fn(value);
           const isSome = await mapped.isSome();
           if (isSome) {
-            const v = mapped.unwrap();
+            const v = await mapped.unwrap();
             return ["some", v] as ISome<U>;
           } else {
             return ["none", null] as INone;

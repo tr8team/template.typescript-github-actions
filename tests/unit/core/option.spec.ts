@@ -247,50 +247,127 @@ describe("Option", function() {
 
   // describe andThen
   describe("andThen", function() {
-    it("should return the value of Some", async function() {
-      const result: Option<number> = Some(5);
-      const act = await result.andThen(x => Some(x + 1));
-      await act.should.be.someOf(6);
-    });
-    it("should return None", async function() {
-      const result: Option<number> = None();
-      const act = await result.andThen(x => Some(x + 1));
-      await act.should.be.none;
-    });
-    // async andThen
-    it("should return the value of Some with async andThens", async function() {
-      const result: Option<number> = Some(5);
-      const act = await result.andThen(x => Promise.resolve(Some(x + 1)));
-      await act.should.be.someOf(6);
-    });
-    it("should return None with async andThens", async function() {
-      const result: Option<number> = None();
-      const act = await result.andThen(x => Promise.resolve(Some(x + 1)));
-      await act.should.be.none;
+
+    describe("single layer", function() {
+
+      it("should return the value of Some", function() {
+        const result: Option<number> = Some(5);
+        const act = result
+          .andThen(x => Some(x + 1));
+        return act.should.be.someOf(6);
+      });
+      it("should return None", function() {
+        const result: Option<number> = None();
+        const act = result
+          .andThen(x => Some(x + 1));
+        return act.should.be.none;
+      });
+      // async andThen
+      it("should return the value of Some with async andThens", function() {
+        const result: Option<number> = Some(5);
+        const act = result
+          .andThen(x => Promise.resolve(Some(x + 1)));
+        return act.should.be.someOf(6);
+      });
+      it("should return None with async andThens", function() {
+        const result: Option<number> = None();
+        const act = result
+          .andThen(x => Promise.resolve(Some(x + 1)));
+        return act.should.be.none;
+      });
+
+      // andThen returns None
+      it("should return None if the andThen returns None original is Some", function() {
+        const result: Option<number> = Some(5);
+        const act = result
+          .andThen(_ => None());
+        return act.should.be.none;
+      });
+      it("should return None if the andThen returns None original is None", function() {
+        const result: Option<number> = None();
+        const act = result
+          .andThen(_ => None());
+        return act.should.be.none;
+      });
+      // async andThen returns None
+      it("should return None if the async andThen returns None original is Some", function() {
+        const result: Option<number> = Some(5);
+        const act = result
+          .andThen(_ => Promise.resolve(None()));
+        return act.should.be.none;
+      });
+      it("should return None if the async andThen returns None original is None", function() {
+        const result: Option<number> = None();
+        const act = result
+          .andThen(_ => Promise.resolve(None()));
+        return act.should.be.none;
+      });
+
     });
 
-    // andThen returns None
-    it("should return None if the andThen returns None original is Some", async function() {
-      const result: Option<number> = Some(5);
-      const act = await result.andThen(_ => None());
-      await act.should.be.none;
+    describe("async andThen first", function() {
+      it("should return the value of Some", function() {
+        const result: Option<number> = Some(5);
+        const act = result
+          .andThen(x => Promise.resolve(Some(x + 1)))
+          .andThen(x => Some(x + 1));
+        return act.should.be.someOf(7);
+      });
+      it("should return None", function() {
+        const result: Option<number> = None();
+        const act = result
+          .andThen(x => Promise.resolve(Some(x + 1)))
+          .andThen(x => Some(x + 1));
+        return act.should.be.none;
+      });
+      // async andThen
+      it("should return the value of Some with async andThens", function() {
+        const result: Option<number> = Some(5);
+        const act = result
+          .andThen(x => Promise.resolve(Some(x + 1)))
+          .andThen(x => Promise.resolve(Some(x + 1)));
+        return act.should.be.someOf(7);
+      });
+      it("should return None with async andThens", function() {
+        const result: Option<number> = None();
+        const act = result
+          .andThen(x => Promise.resolve(Some(x + 1)))
+          .andThen(x => Promise.resolve(Some(x + 1)));
+        return act.should.be.none;
+      });
+
+      // andThen returns None
+      it("should return None if the andThen returns None original is Some", function() {
+        const result: Option<number> = Some(5);
+        const act = result
+          .andThen((x) => Promise.resolve(Some(x + 1)))
+          .andThen(_ => None());
+        return act.should.be.none;
+      });
+      it("should return None if the andThen returns None original is None", function() {
+        const result: Option<number> = None();
+        const act = result
+          .andThen((x) => Promise.resolve(Some(x + 1)))
+          .andThen(_ => None());
+        return act.should.be.none;
+      });
+      // async andThen returns None
+      it("should return None if the async andThen returns None original is Some", function() {
+        const result: Option<number> = Some(5);
+        const act = result
+          .andThen((x) => Promise.resolve(Some(x + 1)))
+          .andThen(_ => Promise.resolve(None()));
+        return act.should.be.none;
+      });
+      it("should return None if the async andThen returns None original is None", function() {
+        const result: Option<number> = None();
+        const act = result
+          .andThen((x) => Promise.resolve(Some(x + 1)))
+          .andThen(_ => Promise.resolve(None()));
+        return act.should.be.none;
+      });
     });
-    it("should return None if the andThen returns None original is None", async function() {
-      const result: Option<number> = None();
-      const act = await result.andThen(_ => None());
-      await act.should.be.none;
-    });
-    // async andThen returns None
-    it("should return None if the async andThen returns None original is Some", async function() {
-      const result: Option<number> = Some(5);
-      const act = await result.andThen(_ => Promise.resolve(None()));
-      await act.should.be.none;
-    });
-    it("should return None if the async andThen returns None original is None", async function() {
-      const result: Option<number> = None();
-      const act = await result.andThen(_ => Promise.resolve(None()));
-      await act.should.be.none;
-    });
+
   });
 
   // describe unwrap
